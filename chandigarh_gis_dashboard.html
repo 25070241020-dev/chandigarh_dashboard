@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Chandigarh Enumeration Intelligence · GIS Command Centre</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<!-- Dashboard CSS -->
+<link rel="stylesheet" href="dashboard.css"/>
+</head>
+<body>
+
+<!-- Animated background canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<div class="shell">
+
+  <!-- ══════════════ HEADER ══════════════ -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="brand-icon">🏛</div>
+      <div class="brand-text">
+        <h1>Chandigarh Enumeration Intelligence</h1>
+        <p>GIS COMMAND CENTRE · ZONE DIFFICULTY ANALYSIS · UNION TERRITORY OF CHANDIGARH</p>
+      </div>
+    </div>
+
+    <div class="header-meta">
+      <!-- Basemap switcher -->
+      <div class="basemap-toggle" title="Switch basemap">
+        <button class="bm-btn active" data-bm="Dark">DARK</button>
+        <button class="bm-btn" data-bm="Sat">SAT</button>
+        <button class="bm-btn" data-bm="Topo">TOPO</button>
+        <button class="bm-btn" data-bm="OSM">OSM</button>
+      </div>
+
+      <div class="pill pill-src">DATA: GitHub RAW · GeoJSON</div>
+      <div class="pill pill-live"><div class="live-dot"></div>LIVE FEED</div>
+      <div class="clock-badge" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- ══════════════ KPI ROW ══════════════ -->
+  <div class="kpi-row">
+
+    <div class="kpi k-total">
+      <div class="kpi-icon-wrap">⬡</div>
+      <div class="kpi-body">
+        <div class="kpi-label">Total Zones</div>
+        <div class="kpi-val" id="k-total">—</div>
+        <div class="kpi-sub">Enumeration polygons</div>
+      </div>
+      <div class="kpi-ambient"></div>
+    </div>
+
+    <div class="kpi k-high">
+      <div class="kpi-icon-wrap">⚠</div>
+      <div class="kpi-body">
+        <div class="kpi-label">High Difficulty</div>
+        <div class="kpi-val" id="k-high">—</div>
+        <div class="kpi-sub">Critical zones</div>
+      </div>
+      <div class="kpi-ambient"></div>
+    </div>
+
+    <div class="kpi k-med">
+      <div class="kpi-icon-wrap">◎</div>
+      <div class="kpi-body">
+        <div class="kpi-label">Medium Difficulty</div>
+        <div class="kpi-val" id="k-med">—</div>
+        <div class="kpi-sub">Moderate zones</div>
+      </div>
+      <div class="kpi-ambient"></div>
+    </div>
+
+    <div class="kpi k-low">
+      <div class="kpi-icon-wrap">✓</div>
+      <div class="kpi-body">
+        <div class="kpi-label">Low Difficulty</div>
+        <div class="kpi-val" id="k-low">—</div>
+        <div class="kpi-sub">Accessible zones</div>
+      </div>
+      <div class="kpi-ambient"></div>
+    </div>
+
+    <div class="kpi k-area">
+      <div class="kpi-icon-wrap">⌂</div>
+      <div class="kpi-body">
+        <div class="kpi-label">Total Hab. Area</div>
+        <div class="kpi-val" id="k-area">—</div>
+        <div class="kpi-sub">Cumulative sq. units</div>
+      </div>
+      <div class="kpi-ambient"></div>
+    </div>
+
+  </div><!-- /kpi-row -->
+
+  <!-- ══════════════ BODY ══════════════ -->
+  <div class="body">
+
+    <!-- ─── LEFT PANEL ─── -->
+    <aside class="panel panel-left">
+
+      <!-- Filter -->
+      <div class="ps">
+        <div class="ps-title">Filter &amp; Control</div>
+        <div class="select-wrap">
+          <select class="fancy-select" id="diffFilter">
+            <option value="All">All Difficulty Zones</option>
+            <option value="High">High Difficulty Only</option>
+            <option value="Medium">Medium Difficulty Only</option>
+            <option value="Low">Low Difficulty Only</option>
+          </select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-high" id="zoomHighBtn">⚠ &nbsp;Zoom to High Zones</button>
+          <button class="btn btn-gold" id="zoomAllBtn">⬡ &nbsp;Fit All Zones</button>
+          <button class="btn btn-ghost" id="resetBtn">↺ &nbsp;Reset View</button>
+        </div>
+      </div>
+
+      <!-- Layer Toggles -->
+      <div class="ps">
+        <div class="ps-title">Layer Visibility</div>
+
+        <div class="layer-card" id="lc-High">
+          <div class="layer-left">
+            <div class="layer-dot" style="background:var(--high);box-shadow:0 0 7px var(--high)"></div>
+            <div class="layer-info">
+              <div class="layer-name" style="color:var(--high2)">High Difficulty</div>
+              <div class="layer-cnt" id="tc-High">— zones</div>
+            </div>
+          </div>
+          <label class="tog high">
+            <input type="checkbox" id="tog-High" checked/>
+            <span class="tog-track"></span>
+          </label>
+        </div>
+
+        <div class="layer-card" id="lc-Medium">
+          <div class="layer-left">
+            <div class="layer-dot" style="background:var(--med);box-shadow:0 0 7px var(--med)"></div>
+            <div class="layer-info">
+              <div class="layer-name" style="color:var(--med2)">Medium Difficulty</div>
+              <div class="layer-cnt" id="tc-Medium">— zones</div>
+            </div>
+          </div>
+          <label class="tog med">
+            <input type="checkbox" id="tog-Medium" checked/>
+            <span class="tog-track"></span>
+          </label>
+        </div>
+
+        <div class="layer-card" id="lc-Low">
+          <div class="layer-left">
+            <div class="layer-dot" style="background:var(--low);box-shadow:0 0 7px var(--low)"></div>
+            <div class="layer-info">
+              <div class="layer-name" style="color:var(--low2)">Low Difficulty</div>
+              <div class="layer-cnt" id="tc-Low">— zones</div>
+            </div>
+          </div>
+          <label class="tog low">
+            <input type="checkbox" id="tog-Low" checked/>
+            <span class="tog-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Insight Cards — REPLACES repetitive bars -->
+      <div class="ps" style="flex:1">
+        <div class="ps-title">Zone Insights <span class="ps-badge">AI Analysis</span></div>
+
+        <!-- High Insight -->
+        <div class="insight-block">
+          <div class="insight-card ic-high">
+            <div class="ic-header">
+              <span class="ic-label">⚠ High Difficulty</span>
+              <span class="ic-pct" id="ic-pct-hi">0%</span>
+            </div>
+            <p class="ic-body" id="ic-body-hi">Loading zone analysis…</p>
+            <div class="ic-bar-track"><div class="ic-bar-fill" id="ic-bar-hi"></div></div>
+            <div class="ic-ambient"></div>
+          </div>
+        </div>
+
+        <!-- Medium Insight -->
+        <div class="insight-block">
+          <div class="insight-card ic-med">
+            <div class="ic-header">
+              <span class="ic-label">◎ Medium Difficulty</span>
+              <span class="ic-pct" id="ic-pct-me">0%</span>
+            </div>
+            <p class="ic-body" id="ic-body-me">Loading zone analysis…</p>
+            <div class="ic-bar-track"><div class="ic-bar-fill" id="ic-bar-me"></div></div>
+            <div class="ic-ambient"></div>
+          </div>
+        </div>
+
+        <!-- Low Insight -->
+        <div class="insight-block">
+          <div class="insight-card ic-low">
+            <div class="ic-header">
+              <span class="ic-label">✓ Low Difficulty</span>
+              <span class="ic-pct" id="ic-pct-lo">0%</span>
+            </div>
+            <p class="ic-body" id="ic-body-lo">Loading zone analysis…</p>
+            <div class="ic-bar-track"><div class="ic-bar-fill" id="ic-bar-lo"></div></div>
+            <div class="ic-ambient"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </aside><!-- /panel-left -->
+
+    <!-- ─── MAP ─── -->
+    <div class="map-wrap">
+
+      <!-- Loading screen -->
+      <div id="loader">
+        <div class="loader-icon">🗺</div>
+        <div class="loader-ring"></div>
+        <div class="loader-h">Loading Geospatial Data</div>
+        <div class="loader-s">FETCHING · CHANDIGARH · ENUMERATION ZONES</div>
+      </div>
+
+      <!-- Map canvas -->
+      <div id="map"></div>
+
+      <!-- Coordinate HUD -->
+      <div class="map-hud hud-top-left">
+        <div class="hud-label">Cursor Position</div>
+        <div class="hud-row">Lat &nbsp;&nbsp;<span id="h-lat">—</span></div>
+        <div class="hud-row">Lng &nbsp;&nbsp;<span id="h-lng">—</span></div>
+        <div class="hud-row">Zoom &nbsp;<span id="h-zoom">—</span></div>
+      </div>
+
+      <!-- Zone count HUD -->
+      <div class="map-hud hud-bot-left">
+        <div class="hud-label">Visible Zones</div>
+        <div class="hud-big" id="h-count">—</div>
+        <div class="hud-small">polygons on map</div>
+      </div>
+
+    </div><!-- /map-wrap -->
+
+    <!-- ─── RIGHT PANEL ─── -->
+    <aside class="panel panel-right">
+
+      <!-- Legend -->
+      <div class="ps">
+        <div class="ps-title">Classification Legend</div>
+
+        <div class="legend-row">
+          <div class="leg-swatch" style="background:var(--high-bg);border:1px solid var(--high-rim);color:var(--high)">⚠</div>
+          <div class="leg-body">
+            <div class="leg-name" style="color:var(--high2)">High Difficulty</div>
+            <div class="leg-desc">Dense / restricted access areas</div>
+          </div>
+          <div class="leg-pct" id="leg-pct-hi">—</div>
+        </div>
+
+        <div class="legend-row">
+          <div class="leg-swatch" style="background:var(--med-bg);border:1px solid var(--med-rim);color:var(--med)">◎</div>
+          <div class="leg-body">
+            <div class="leg-name" style="color:var(--med2)">Medium Difficulty</div>
+            <div class="leg-desc">Moderate terrain &amp; access</div>
+          </div>
+          <div class="leg-pct" id="leg-pct-me">—</div>
+        </div>
+
+        <div class="legend-row">
+          <div class="leg-swatch" style="background:var(--low-bg);border:1px solid var(--low-rim);color:var(--low)">✓</div>
+          <div class="leg-body">
+            <div class="leg-name" style="color:var(--low2)">Low Difficulty</div>
+            <div class="leg-desc">Open &amp; easily accessible</div>
+          </div>
+          <div class="leg-pct" id="leg-pct-lo">—</div>
+        </div>
+      </div>
+
+      <!-- Donut Chart -->
+      <div class="ps">
+        <div class="ps-title">Zone Breakdown</div>
+        <div class="donut-wrap">
+          <svg class="donut" width="158" height="158" viewBox="0 0 158 158">
+            <!-- Track -->
+            <circle cx="79" cy="79" r="60" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="20"/>
+            <!-- High segment -->
+            <circle id="ds-hi" cx="79" cy="79" r="60" fill="none"
+              stroke="var(--high)" stroke-width="20"
+              stroke-dasharray="0 377" stroke-dashoffset="0"
+              transform="rotate(-90 79 79)"
+              style="transition:stroke-dasharray 1.3s cubic-bezier(0.16,1,0.3,1)"/>
+            <!-- Medium segment -->
+            <circle id="ds-me" cx="79" cy="79" r="60" fill="none"
+              stroke="var(--med)" stroke-width="20"
+              stroke-dasharray="0 377" stroke-dashoffset="0"
+              transform="rotate(-90 79 79)"
+              style="transition:stroke-dasharray 1.3s cubic-bezier(0.16,1,0.3,1), stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)"/>
+            <!-- Low segment -->
+            <circle id="ds-lo" cx="79" cy="79" r="60" fill="none"
+              stroke="var(--low)" stroke-width="20"
+              stroke-dasharray="0 377" stroke-dashoffset="0"
+              transform="rotate(-90 79 79)"
+              style="transition:stroke-dasharray 1.3s cubic-bezier(0.16,1,0.3,1), stroke-dashoffset 1.3s cubic-bezier(0.16,1,0.3,1)"/>
+            <!-- Center text -->
+            <text x="79" y="74" text-anchor="middle"
+              font-family="Playfair Display,serif" font-size="21" font-weight="900"
+              fill="#f0f4ff" id="donut-mid">—</text>
+            <text x="79" y="92" text-anchor="middle"
+              font-family="JetBrains Mono,monospace" font-size="8.5"
+              fill="#4a6080" letter-spacing="1">TOTAL ZONES</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Analytics Tiles -->
+      <div class="ps">
+        <div class="ps-title">Analytics</div>
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <div class="st-label">High %</div>
+            <div class="st-value" id="st-hi-pct" style="color:var(--high2)">—</div>
+            <div class="st-note">of total zones</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-label">Low %</div>
+            <div class="st-value" id="st-lo-pct" style="color:var(--low2)">—</div>
+            <div class="st-note">of total zones</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-label">Avg Area</div>
+            <div class="st-value" id="st-avg" style="color:var(--sky)">—</div>
+            <div class="st-note">sq. units / zone</div>
+          </div>
+          <div class="stat-tile">
+            <div class="st-label">Low : High</div>
+            <div class="st-value" id="st-ratio" style="color:var(--gold3)">—</div>
+            <div class="st-note">accessibility ratio</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone Inspector -->
+      <div class="ps">
+        <div class="ps-title">Zone Inspector</div>
+        <div class="inspector-box" id="inspector">
+          <div class="insp-empty">
+            <div class="ei">🔍</div>
+            <div>Hover or click a zone<br>to inspect attributes</div>
+          </div>
+          <div class="insp-content" id="insp-content"></div>
+        </div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="ps" style="flex:1">
+        <div class="ps-title">Activity Log</div>
+        <div id="actLog"></div>
+      </div>
+
+    </aside><!-- /panel-right -->
+
+  </div><!-- /body -->
+
+</div><!-- /shell -->
+
+<!-- Dashboard JS -->
+<script src="dashboard.js"></script>
+
+</body>
+</html>
